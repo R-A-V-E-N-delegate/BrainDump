@@ -18,6 +18,7 @@ export function VoicePanel({ apiKey }: VoicePanelProps) {
     isRecording,
     isMuted,
     aiResponse,
+    error,
     setStatus,
     setError,
     setRecording,
@@ -207,9 +208,9 @@ export function VoicePanel({ apiKey }: VoicePanelProps) {
           )}
 
           {/* Error display */}
-          {status === 'error' && (
+          {status === 'error' && error && (
             <div className="p-2 lg:p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
-              <p className="text-red-400 text-xs lg:text-sm">{useVoiceStore.getState().error}</p>
+              <p className="text-red-400 text-xs lg:text-sm">{error}</p>
             </div>
           )}
         </div>
