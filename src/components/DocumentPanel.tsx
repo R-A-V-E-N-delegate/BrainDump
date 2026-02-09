@@ -20,16 +20,18 @@ export function DocumentPanel() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(content);
+  // Track the previous content to detect external changes
+  const [prevContent, setPrevContent] = useState(content);
 
   const canUndo = historyIndex > 0;
   const canRedo = historyIndex < history.length - 1;
 
   // Sync editValue when content changes externally (e.g., from voice)
-  useEffect(() => {
-    if (!isEditing) {
-      setEditValue(content);
-    }
-  }, [content, isEditing]);
+  // Using state comparison pattern instead of useEffect with setState
+  if (!isEditing && content !== prevContent) {
+    setPrevContent(content);
+    setEditValue(content);
+  }
 
   // Focus textarea when entering edit mode
   useEffect(() => {

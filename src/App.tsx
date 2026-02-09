@@ -6,16 +6,11 @@ import { ApiKeyInput } from './components/ApiKeyInput';
 import { useDocumentStore } from './stores/document';
 
 function App() {
-  const [apiKey, setApiKey] = useState<string | null>(null);
+  // Initialize from localStorage synchronously to avoid flash
+  const [apiKey, setApiKey] = useState<string | null>(() => {
+    return localStorage.getItem('braindump_api_key');
+  });
   const { content, undo, redo } = useDocumentStore();
-
-  // Check for saved API key on mount
-  useEffect(() => {
-    const savedKey = localStorage.getItem('braindump_api_key');
-    if (savedKey) {
-      setApiKey(savedKey);
-    }
-  }, []);
 
   // Keyboard shortcuts
   useEffect(() => {

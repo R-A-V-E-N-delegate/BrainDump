@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useEffect } from 'react';
 
 interface UseAudioPlaybackOptions {
   sampleRate?: number;
@@ -11,6 +11,7 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}) {
   const audioQueueRef = useRef<AudioBuffer[]>([]);
   const isPlayingRef = useRef(false);
   const nextStartTimeRef = useRef(0);
+  const playNextBufferRef = useRef<((ctx: AudioContext) => void) | null>(null);
 
   const getAudioContext = useCallback(() => {
     if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
@@ -18,6 +19,35 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}) {
     }
     return audioContextRef.current;
   }, [sampleRate]);
+
+  const playNextBuffer = useCallback((audioContext: AudioContext) => {
+    const buffer = audioQueueRef.current.shift();
+    if (!buffer) {
+      isPlayingRef.current = false;
+      return;
+    }
+
+    isPlayingRef.current = true;
+
+    const source = audioContext.createBufferSource();
+    source.buffer = buffer;
+    source.connect(audioContext.destination);
+
+    // Schedule playback
+    const startTime = Math.max(audioContext.currentTime, nextStartTimeRef.current);
+    source.start(startTime);
+    nextStartTimeRef.current = startTime + buffer.duration;
+
+    // Play next buffer when this one ends (use ref for recursive call)
+    source.onended = () => {
+      playNextBufferRef.current?.(audioContext);
+    };
+  }, []);
+
+  // Store ref for recursive calls in an effect
+  useEffect(() => {
+    playNextBufferRef.current = playNextBuffer;
+  }, [playNextBuffer]);
 
   const playAudio = useCallback((audioData: ArrayBuffer) => {
     const audioContext = getAudioContext();
@@ -41,31 +71,7 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}) {
     if (!isPlayingRef.current) {
       playNextBuffer(audioContext);
     }
-  }, [getAudioContext, sampleRate]);
-
-  const playNextBuffer = useCallback((audioContext: AudioContext) => {
-    const buffer = audioQueueRef.current.shift();
-    if (!buffer) {
-      isPlayingRef.current = false;
-      return;
-    }
-
-    isPlayingRef.current = true;
-
-    const source = audioContext.createBufferSource();
-    source.buffer = buffer;
-    source.connect(audioContext.destination);
-
-    // Schedule playback
-    const startTime = Math.max(audioContext.currentTime, nextStartTimeRef.current);
-    source.start(startTime);
-    nextStartTimeRef.current = startTime + buffer.duration;
-
-    // Play next buffer when this one ends
-    source.onended = () => {
-      playNextBuffer(audioContext);
-    };
-  }, []);
+  }, [getAudioContext, sampleRate, playNextBuffer]);
 
   const stopPlayback = useCallback(() => {
     audioQueueRef.current = [];

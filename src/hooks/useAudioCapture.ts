@@ -54,7 +54,7 @@ export function useAudioCapture(options: UseAudioCaptureOptions = {}) {
 
         // If sample rates match, send directly
         if (audioContext.sampleRate === sampleRate) {
-          const base64 = audioToBase64(inputData, sampleRate);
+          const base64 = audioToBase64(inputData);
           onAudioData?.(base64);
         } else {
           // Resample to target rate
@@ -86,7 +86,7 @@ export function useAudioCapture(options: UseAudioCaptureOptions = {}) {
               resampled[i] = combined[srcIndexFloor] * (1 - t) + combined[srcIndexCeil] * t;
             }
 
-            const base64 = audioToBase64(resampled, sampleRate);
+            const base64 = audioToBase64(resampled);
             onAudioData?.(base64);
 
             resampleBuffer = [];

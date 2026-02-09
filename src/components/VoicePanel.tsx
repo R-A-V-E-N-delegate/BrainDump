@@ -43,7 +43,7 @@ export function VoicePanel({ apiKey }: VoicePanelProps) {
 
     const client = new GeminiLiveClient({
       apiKey,
-      onTranscript: (text, _isFinal) => {
+      onTranscript: (text) => {
         setAiResponse(text);
       },
       onAudioResponse: (audioData) => {

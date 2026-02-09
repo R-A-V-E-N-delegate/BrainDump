@@ -313,12 +313,12 @@ Start by greeting the user briefly and asking what they'd like to work on.`;
     }
   }
 
-  private handleToolCall(toolCall: { functionCalls?: Array<{ name: string; args: any; id: string }> }): void {
+  private handleToolCall(toolCall: { functionCalls?: Array<{ name: string; args: Record<string, unknown>; id: string }> }): void {
     if (!toolCall.functionCalls) return;
 
     for (const call of toolCall.functionCalls) {
       if (call.name === 'update_document') {
-        const content = call.args?.content || '';
+        const content = (call.args?.content as string) || '';
         console.log('[GeminiLive] Document update:', content.substring(0, 100) + '...');
         this.config.onDocumentUpdate?.(content);
 
@@ -398,7 +398,7 @@ Start by greeting the user briefly and asking what they'd like to work on.`;
 /**
  * Convert Float32Array audio samples to base64 PCM
  */
-export function audioToBase64(samples: Float32Array, _targetSampleRate = 16000): string {
+export function audioToBase64(samples: Float32Array): string {
   // Convert float samples to 16-bit PCM
   const pcm = new Int16Array(samples.length);
   for (let i = 0; i < samples.length; i++) {
