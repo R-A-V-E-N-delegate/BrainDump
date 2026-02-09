@@ -228,13 +228,36 @@ export function DocumentPanel() {
             </ReactMarkdown>
           </article>
         ) : (
-          <div className="flex items-center justify-center h-full text-slate-500">
-            <div className="text-center">
-              <svg className="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <p className="text-lg font-medium mb-2">Your document will appear here</p>
-              <p className="text-sm">Start speaking to add content</p>
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center max-w-md">
+              <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center">
+                <svg className="w-10 h-10 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-slate-200 mb-2">Ready to brain dump</h3>
+              <p className="text-slate-400 mb-6">
+                Click the mic and start speaking. Your thoughts will be organized into a document.
+              </p>
+
+              <div className="grid grid-cols-2 gap-3 text-left">
+                <div className="p-3 bg-slate-800/30 rounded-lg border border-slate-700/30">
+                  <div className="text-xs font-medium text-slate-400 mb-1">Add ideas</div>
+                  <p className="text-xs text-slate-500">"Add a section about marketing"</p>
+                </div>
+                <div className="p-3 bg-slate-800/30 rounded-lg border border-slate-700/30">
+                  <div className="text-xs font-medium text-slate-400 mb-1">Edit with selection</div>
+                  <p className="text-xs text-slate-500">Highlight text, then "make this shorter"</p>
+                </div>
+                <div className="p-3 bg-slate-800/30 rounded-lg border border-slate-700/30">
+                  <div className="text-xs font-medium text-slate-400 mb-1">Organize</div>
+                  <p className="text-xs text-slate-500">"Move that section up"</p>
+                </div>
+                <div className="p-3 bg-slate-800/30 rounded-lg border border-slate-700/30">
+                  <div className="text-xs font-medium text-slate-400 mb-1">Refine</div>
+                  <p className="text-xs text-slate-500">"Rephrase the introduction"</p>
+                </div>
+              </div>
             </div>
           </div>
         )}
