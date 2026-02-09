@@ -1,13 +1,24 @@
 import { create } from 'zustand';
 
+export interface TextSelection {
+  text: string;           // The selected text
+  startOffset: number;    // Character offset from start of document
+  endOffset: number;      // Character offset for end of selection
+}
+
 interface DocumentState {
   content: string;
   history: string[];
   historyIndex: number;
 
+  // Selection tracking
+  selection: TextSelection | null;
+
   // Actions
   setContent: (content: string) => void;
   appendContent: (text: string) => void;
+  setSelection: (selection: TextSelection | null) => void;
+  clearSelection: () => void;
   undo: () => void;
   redo: () => void;
   clear: () => void;
@@ -19,6 +30,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   content: '',
   history: [''],
   historyIndex: 0,
+  selection: null,
 
   setContent: (content: string) => {
     const { history, historyIndex } = get();
@@ -33,6 +45,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       content,
       history: newHistory,
       historyIndex: newHistory.length - 1,
+      selection: null, // Clear selection when content changes
     });
   },
 
@@ -42,6 +55,14 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     setContent(newContent);
   },
 
+  setSelection: (selection: TextSelection | null) => {
+    set({ selection });
+  },
+
+  clearSelection: () => {
+    set({ selection: null });
+  },
+
   undo: () => {
     const { history, historyIndex } = get();
     if (historyIndex > 0) {
@@ -49,6 +70,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       set({
         content: history[newIndex],
         historyIndex: newIndex,
+        selection: null,
       });
     }
   },
@@ -60,6 +82,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       set({
         content: history[newIndex],
         historyIndex: newIndex,
+        selection: null,
       });
     }
   },
@@ -69,6 +92,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       content: '',
       history: [''],
       historyIndex: 0,
+      selection: null,
     });
   },
 }));

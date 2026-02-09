@@ -24,7 +24,7 @@ export function VoicePanel({ apiKey }: VoicePanelProps) {
     setAiResponse,
   } = useVoiceStore();
 
-  const { setContent } = useDocumentStore();
+  const { content, selection, setContent } = useDocumentStore();
   const { playAudio, stopPlayback } = useAudioPlayback();
 
   // Audio capture with streaming to Gemini
@@ -48,8 +48,8 @@ export function VoicePanel({ apiKey }: VoicePanelProps) {
       onAudioResponse: (audioData) => {
         playAudio(audioData);
       },
-      onDocumentUpdate: (content) => {
-        setContent(content);
+      onDocumentUpdate: (newContent) => {
+        setContent(newContent);
       },
       onError: (error) => {
         setError(error.message);
@@ -66,6 +66,13 @@ export function VoicePanel({ apiKey }: VoicePanelProps) {
       clientRef.current = null;
     };
   }, [apiKey, setStatus, setError, setAiResponse, setContent, playAudio]);
+
+  // Update Gemini with selection context when it changes
+  useEffect(() => {
+    if (clientRef.current?.isConnected()) {
+      clientRef.current.updateContext(content, selection);
+    }
+  }, [content, selection]);
 
   // Connect to Gemini
   const handleConnect = useCallback(async () => {
@@ -140,6 +147,15 @@ export function VoicePanel({ apiKey }: VoicePanelProps) {
           </svg>
         </button>
 
+        {/* Selection context indicator */}
+        {status === 'connected' && selection && (
+          <div className="px-3 py-1.5 bg-blue-500/20 border border-blue-500/30 rounded-lg">
+            <span className="text-xs text-blue-300">
+              Context: "{selection.text.substring(0, 30)}{selection.text.length > 30 ? '...' : ''}"
+            </span>
+          </div>
+        )}
+
         {/* Mute button (only when connected) */}
         {status === 'connected' && (
           <button
@@ -160,7 +176,10 @@ export function VoicePanel({ apiKey }: VoicePanelProps) {
         <p className="text-slate-400 text-sm text-center max-w-[200px]">
           {status === 'disconnected' && 'Click the mic to start'}
           {status === 'connecting' && 'Connecting...'}
-          {status === 'connected' && 'Speak your thoughts'}
+          {status === 'connected' && (selection
+            ? 'Speak to edit selection'
+            : 'Speak your thoughts'
+          )}
           {status === 'error' && 'Connection error'}
         </p>
       </div>

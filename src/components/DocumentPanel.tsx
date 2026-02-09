@@ -1,17 +1,99 @@
+import { useCallback, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useDocumentStore } from '../stores/document';
 
 export function DocumentPanel() {
-  const { content, historyIndex, history, undo, redo, clear } = useDocumentStore();
+  const {
+    content,
+    historyIndex,
+    history,
+    selection,
+    undo,
+    redo,
+    clear,
+    setSelection,
+    clearSelection
+  } = useDocumentStore();
+
+  const contentRef = useRef<HTMLDivElement>(null);
 
   const canUndo = historyIndex > 0;
   const canRedo = historyIndex < history.length - 1;
+
+  // Handle text selection
+  const handleSelectionChange = useCallback(() => {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !contentRef.current) {
+      // No selection or cursor only
+      return;
+    }
+
+    // Check if selection is within our content area
+    const range = sel.getRangeAt(0);
+    if (!contentRef.current.contains(range.commonAncestorContainer)) {
+      return;
+    }
+
+    const selectedText = sel.toString().trim();
+    if (!selectedText) {
+      clearSelection();
+      return;
+    }
+
+    // Find position in the original markdown content
+    // This is approximate - we match the selected text in the content
+    const startOffset = content.indexOf(selectedText);
+    const endOffset = startOffset >= 0 ? startOffset + selectedText.length : -1;
+
+    setSelection({
+      text: selectedText,
+      startOffset,
+      endOffset,
+    });
+  }, [content, setSelection, clearSelection]);
+
+  // Listen for selection changes
+  useEffect(() => {
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => {
+      document.removeEventListener('selectionchange', handleSelectionChange);
+    };
+  }, [handleSelectionChange]);
+
+  // Clear selection when clicking outside
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    // If clicking on a button or interactive element, don't clear
+    if ((e.target as HTMLElement).closest('button')) {
+      return;
+    }
+  }, []);
 
   return (
     <div className="flex flex-col h-full bg-slate-900/50 backdrop-blur-sm rounded-2xl border border-slate-700/50">
       {/* Toolbar */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/50">
-        <h2 className="text-lg font-semibold text-slate-200">Document</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-semibold text-slate-200">Document</h2>
+
+          {/* Selection indicator */}
+          {selection && (
+            <div className="flex items-center gap-2 px-3 py-1 bg-blue-500/20 border border-blue-500/30 rounded-full">
+              <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+              <span className="text-xs text-blue-300 max-w-[150px] truncate">
+                "{selection.text}"
+              </span>
+              <button
+                onClick={clearSelection}
+                className="text-blue-400 hover:text-blue-300 transition-colors"
+                title="Clear selection"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          )}
+        </div>
 
         <div className="flex items-center gap-2">
           {/* Undo */}
@@ -81,7 +163,11 @@ export function DocumentPanel() {
       </div>
 
       {/* Document content */}
-      <div className="flex-1 overflow-auto p-6">
+      <div
+        ref={contentRef}
+        className="flex-1 overflow-auto p-6 select-text"
+        onMouseDown={handleMouseDown}
+      >
         {content ? (
           <article className="prose prose-invert prose-slate max-w-none">
             <ReactMarkdown
@@ -154,12 +240,19 @@ export function DocumentPanel() {
         )}
       </div>
 
-      {/* Footer with word count */}
+      {/* Footer with word count and selection info */}
       {content && (
-        <div className="px-4 py-2 border-t border-slate-700/50 text-xs text-slate-500">
-          {content.split(/\s+/).filter(Boolean).length} words
-          {' • '}
-          {history.length} revisions
+        <div className="px-4 py-2 border-t border-slate-700/50 text-xs text-slate-500 flex justify-between">
+          <span>
+            {content.split(/\s+/).filter(Boolean).length} words
+            {' • '}
+            {history.length} revisions
+          </span>
+          {selection && (
+            <span className="text-blue-400">
+              {selection.text.split(/\s+/).filter(Boolean).length} words selected
+            </span>
+          )}
         </div>
       )}
     </div>

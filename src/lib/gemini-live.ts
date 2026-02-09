@@ -5,6 +5,12 @@
  * Audio format: 16kHz PCM input, 24kHz output
  */
 
+export interface TextSelection {
+  text: string;
+  startOffset: number;
+  endOffset: number;
+}
+
 export interface GeminiLiveConfig {
   apiKey: string;
   model?: string;
@@ -62,6 +68,11 @@ export class GeminiLiveClient {
   private pendingAudio: string[] = [];
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 3;
+
+  // Current context state
+  private currentSelection: TextSelection | null = null;
+  private lastContextUpdate = 0;
+  private contextUpdateInterval = 2000; // Update context every 2 seconds max
 
   constructor(config: GeminiLiveConfig) {
     this.config = config;
@@ -183,6 +194,11 @@ Your role:
 2. Organize their ideas into a clear, structured document
 3. Use the update_document function to modify the document in real-time
 
+IMPORTANT - Selection Context:
+- When the user highlights/selects text in the document, you'll receive a CONTEXT message showing what's selected
+- Commands like "make this more concise", "rephrase this", "delete this" refer to the SELECTED text
+- If no text is selected, these commands apply to the last thing you added or the whole document
+
 Guidelines:
 - Keep responses brief and conversational (1-2 sentences)
 - Focus on DOING the work, not explaining what you'll do
@@ -190,8 +206,48 @@ Guidelines:
 - Structure content with headers, bullet points, and clear organization
 - Understand commands like "move that up", "rephrase that", "delete the last point"
 - The document should be in markdown format
+- When updating based on selection, maintain the rest of the document unchanged
 
 Start by greeting the user briefly and asking what they'd like to work on.`;
+  }
+
+  /**
+   * Update the current document and selection context.
+   * This sends a context update to Gemini so it knows what the user is looking at.
+   */
+  updateContext(_document: string, selection: TextSelection | null): void {
+    this.currentSelection = selection;
+
+    // Throttle context updates to avoid spamming
+    const now = Date.now();
+    if (now - this.lastContextUpdate < this.contextUpdateInterval) {
+      return;
+    }
+    this.lastContextUpdate = now;
+
+    // Only send context when there's a meaningful selection
+    if (selection && this.isSetupComplete) {
+      this.sendContextMessage();
+    }
+  }
+
+  private sendContextMessage(): void {
+    if (!this.currentSelection) return;
+
+    const contextText = `[CONTEXT: User has selected the following text in the document: "${this.currentSelection.text}"]`;
+
+    const message: BidiMessage = {
+      clientContent: {
+        turns: [{
+          role: 'user',
+          parts: [{ text: contextText }],
+        }],
+        turnComplete: false, // Don't expect immediate response, just providing context
+      },
+    };
+
+    console.log('[GeminiLive] Sending selection context:', this.currentSelection.text.substring(0, 50) + '...');
+    this.ws?.send(JSON.stringify(message));
   }
 
   private handleMessage(data: string | ArrayBuffer): void {
