@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useDocumentStore } from '../stores/document';
 
@@ -11,24 +11,44 @@ export function DocumentPanel() {
     undo,
     redo,
     clear,
+    setContent,
     setSelection,
     clearSelection
   } = useDocumentStore();
 
   const contentRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(content);
 
   const canUndo = historyIndex > 0;
   const canRedo = historyIndex < history.length - 1;
 
-  // Handle text selection
+  // Sync editValue when content changes externally (e.g., from voice)
+  useEffect(() => {
+    if (!isEditing) {
+      setEditValue(content);
+    }
+  }, [content, isEditing]);
+
+  // Focus textarea when entering edit mode
+  useEffect(() => {
+    if (isEditing && textareaRef.current) {
+      textareaRef.current.focus();
+      // Move cursor to end
+      textareaRef.current.selectionStart = textareaRef.current.value.length;
+    }
+  }, [isEditing]);
+
+  // Handle text selection in preview mode
   const handleSelectionChange = useCallback(() => {
+    if (isEditing) return; // Don't track selection in edit mode
+
     const sel = window.getSelection();
     if (!sel || sel.isCollapsed || !contentRef.current) {
-      // No selection or cursor only
       return;
     }
 
-    // Check if selection is within our content area
     const range = sel.getRangeAt(0);
     if (!contentRef.current.contains(range.commonAncestorContainer)) {
       return;
@@ -40,8 +60,6 @@ export function DocumentPanel() {
       return;
     }
 
-    // Find position in the original markdown content
-    // This is approximate - we match the selected text in the content
     const startOffset = content.indexOf(selectedText);
     const endOffset = startOffset >= 0 ? startOffset + selectedText.length : -1;
 
@@ -50,9 +68,8 @@ export function DocumentPanel() {
       startOffset,
       endOffset,
     });
-  }, [content, setSelection, clearSelection]);
+  }, [content, setSelection, clearSelection, isEditing]);
 
-  // Listen for selection changes
   useEffect(() => {
     document.addEventListener('selectionchange', handleSelectionChange);
     return () => {
@@ -60,9 +77,46 @@ export function DocumentPanel() {
     };
   }, [handleSelectionChange]);
 
-  // Clear selection when clicking outside
+  // Toggle edit mode
+  const handleToggleEdit = useCallback(() => {
+    if (isEditing) {
+      // Save changes when exiting edit mode
+      if (editValue !== content) {
+        setContent(editValue);
+      }
+      setIsEditing(false);
+    } else {
+      setEditValue(content);
+      setIsEditing(true);
+      clearSelection();
+    }
+  }, [isEditing, editValue, content, setContent, clearSelection]);
+
+  // Handle textarea changes
+  const handleEditChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setEditValue(e.target.value);
+  }, []);
+
+  // Handle keyboard shortcuts in edit mode
+  const handleEditKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Escape to exit edit mode
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      // Discard changes
+      setEditValue(content);
+      setIsEditing(false);
+    }
+    // Cmd/Ctrl + Enter to save and exit
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
+      if (editValue !== content) {
+        setContent(editValue);
+      }
+      setIsEditing(false);
+    }
+  }, [content, editValue, setContent]);
+
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    // If clicking on a button or interactive element, don't clear
     if ((e.target as HTMLElement).closest('button')) {
       return;
     }
@@ -75,8 +129,16 @@ export function DocumentPanel() {
         <div className="flex items-center gap-3">
           <h2 className="text-lg font-semibold text-slate-200">Document</h2>
 
+          {/* Edit mode indicator */}
+          {isEditing && (
+            <div className="flex items-center gap-2 px-3 py-1 bg-amber-500/20 border border-amber-500/30 rounded-full">
+              <div className="w-2 h-2 rounded-full bg-amber-400" />
+              <span className="text-xs text-amber-300">Editing</span>
+            </div>
+          )}
+
           {/* Selection indicator */}
-          {selection && (
+          {!isEditing && selection && (
             <div className="flex items-center gap-2 px-3 py-1 bg-blue-500/20 border border-blue-500/30 rounded-full">
               <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
               <span className="text-xs text-blue-300 max-w-[150px] truncate">
@@ -96,6 +158,30 @@ export function DocumentPanel() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Edit toggle */}
+          <button
+            onClick={handleToggleEdit}
+            className={`p-2 rounded-lg transition-colors ${
+              isEditing
+                ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30'
+                : 'hover:bg-slate-700 text-slate-300'
+            }`}
+            title={isEditing ? 'Exit edit mode (Esc)' : 'Edit document'}
+          >
+            {isEditing ? (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            )}
+          </button>
+
+          {/* Divider */}
+          <div className="w-px h-4 bg-slate-700" />
+
           {/* Undo */}
           <button
             onClick={undo}
@@ -162,118 +248,155 @@ export function DocumentPanel() {
         </div>
       </div>
 
-      {/* Document content */}
-      <div
-        ref={contentRef}
-        className="flex-1 overflow-auto p-6 select-text"
-        onMouseDown={handleMouseDown}
-      >
-        {content ? (
-          <article className="prose prose-invert prose-slate max-w-none">
-            <ReactMarkdown
-              components={{
-                h1: ({ children }) => (
-                  <h1 className="text-2xl font-bold text-slate-100 mb-4 pb-2 border-b border-slate-700">
-                    {children}
-                  </h1>
-                ),
-                h2: ({ children }) => (
-                  <h2 className="text-xl font-semibold text-slate-200 mt-6 mb-3">
-                    {children}
-                  </h2>
-                ),
-                h3: ({ children }) => (
-                  <h3 className="text-lg font-medium text-slate-300 mt-4 mb-2">
-                    {children}
-                  </h3>
-                ),
-                p: ({ children }) => (
-                  <p className="text-slate-300 leading-relaxed mb-4">
-                    {children}
-                  </p>
-                ),
-                ul: ({ children }) => (
-                  <ul className="list-disc list-inside space-y-2 mb-4 text-slate-300">
-                    {children}
-                  </ul>
-                ),
-                ol: ({ children }) => (
-                  <ol className="list-decimal list-inside space-y-2 mb-4 text-slate-300">
-                    {children}
-                  </ol>
-                ),
-                li: ({ children }) => (
-                  <li className="text-slate-300">{children}</li>
-                ),
-                blockquote: ({ children }) => (
-                  <blockquote className="border-l-4 border-blue-500 pl-4 italic text-slate-400 my-4">
-                    {children}
-                  </blockquote>
-                ),
-                code: ({ children, className }) => {
-                  const isInline = !className;
-                  return isInline ? (
-                    <code className="bg-slate-800 px-1.5 py-0.5 rounded text-blue-300 text-sm">
-                      {children}
-                    </code>
-                  ) : (
-                    <code className="block bg-slate-800 p-4 rounded-lg text-sm overflow-x-auto">
-                      {children}
-                    </code>
-                  );
-                },
-              }}
-            >
-              {content}
-            </ReactMarkdown>
-          </article>
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center max-w-md">
-              <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center">
-                <svg className="w-10 h-10 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold text-slate-200 mb-2">Ready to brain dump</h3>
-              <p className="text-slate-400 mb-6">
-                Click the mic and start speaking. Your thoughts will be organized into a document.
-              </p>
+      {/* Document content / Editor */}
+      {isEditing ? (
+        /* Edit mode - textarea */
+        <div className="flex-1 overflow-hidden p-4">
+          <textarea
+            ref={textareaRef}
+            value={editValue}
+            onChange={handleEditChange}
+            onKeyDown={handleEditKeyDown}
+            className="w-full h-full bg-slate-800/50 text-slate-200 font-mono text-sm p-4 rounded-lg border border-slate-700 focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 outline-none resize-none"
+            placeholder="Type or paste your content here...
 
-              <div className="grid grid-cols-2 gap-3 text-left">
-                <div className="p-3 bg-slate-800/30 rounded-lg border border-slate-700/30">
-                  <div className="text-xs font-medium text-slate-400 mb-1">Add ideas</div>
-                  <p className="text-xs text-slate-500">"Add a section about marketing"</p>
+Use Markdown formatting:
+# Heading 1
+## Heading 2
+- Bullet points
+1. Numbered lists
+**bold** and *italic*
+
+Press Cmd+Enter to save, Esc to cancel"
+          />
+          <div className="mt-2 text-xs text-slate-500 flex justify-between">
+            <span>Markdown supported</span>
+            <span>⌘↵ Save • Esc Cancel</span>
+          </div>
+        </div>
+      ) : (
+        /* Preview mode - rendered markdown */
+        <div
+          ref={contentRef}
+          className="flex-1 overflow-auto p-6 select-text"
+          onMouseDown={handleMouseDown}
+        >
+          {content ? (
+            <article className="prose prose-invert prose-slate max-w-none">
+              <ReactMarkdown
+                components={{
+                  h1: ({ children }) => (
+                    <h1 className="text-2xl font-bold text-slate-100 mb-4 pb-2 border-b border-slate-700">
+                      {children}
+                    </h1>
+                  ),
+                  h2: ({ children }) => (
+                    <h2 className="text-xl font-semibold text-slate-200 mt-6 mb-3">
+                      {children}
+                    </h2>
+                  ),
+                  h3: ({ children }) => (
+                    <h3 className="text-lg font-medium text-slate-300 mt-4 mb-2">
+                      {children}
+                    </h3>
+                  ),
+                  p: ({ children }) => (
+                    <p className="text-slate-300 leading-relaxed mb-4">
+                      {children}
+                    </p>
+                  ),
+                  ul: ({ children }) => (
+                    <ul className="list-disc list-inside space-y-2 mb-4 text-slate-300">
+                      {children}
+                    </ul>
+                  ),
+                  ol: ({ children }) => (
+                    <ol className="list-decimal list-inside space-y-2 mb-4 text-slate-300">
+                      {children}
+                    </ol>
+                  ),
+                  li: ({ children }) => (
+                    <li className="text-slate-300">{children}</li>
+                  ),
+                  blockquote: ({ children }) => (
+                    <blockquote className="border-l-4 border-blue-500 pl-4 italic text-slate-400 my-4">
+                      {children}
+                    </blockquote>
+                  ),
+                  code: ({ children, className }) => {
+                    const isInline = !className;
+                    return isInline ? (
+                      <code className="bg-slate-800 px-1.5 py-0.5 rounded text-blue-300 text-sm">
+                        {children}
+                      </code>
+                    ) : (
+                      <code className="block bg-slate-800 p-4 rounded-lg text-sm overflow-x-auto">
+                        {children}
+                      </code>
+                    );
+                  },
+                }}
+              >
+                {content}
+              </ReactMarkdown>
+            </article>
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center max-w-md">
+                <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center">
+                  <svg className="w-10 h-10 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
                 </div>
-                <div className="p-3 bg-slate-800/30 rounded-lg border border-slate-700/30">
-                  <div className="text-xs font-medium text-slate-400 mb-1">Edit with selection</div>
-                  <p className="text-xs text-slate-500">Highlight text, then "make this shorter"</p>
-                </div>
-                <div className="p-3 bg-slate-800/30 rounded-lg border border-slate-700/30">
-                  <div className="text-xs font-medium text-slate-400 mb-1">Organize</div>
-                  <p className="text-xs text-slate-500">"Move that section up"</p>
-                </div>
-                <div className="p-3 bg-slate-800/30 rounded-lg border border-slate-700/30">
-                  <div className="text-xs font-medium text-slate-400 mb-1">Refine</div>
-                  <p className="text-xs text-slate-500">"Rephrase the introduction"</p>
+                <h3 className="text-xl font-semibold text-slate-200 mb-2">Ready to brain dump</h3>
+                <p className="text-slate-400 mb-6">
+                  Click the mic to speak, or click the edit button to type directly.
+                </p>
+
+                <div className="grid grid-cols-2 gap-3 text-left">
+                  <div className="p-3 bg-slate-800/30 rounded-lg border border-slate-700/30">
+                    <div className="text-xs font-medium text-slate-400 mb-1">🎤 Voice</div>
+                    <p className="text-xs text-slate-500">"Add a section about marketing"</p>
+                  </div>
+                  <div className="p-3 bg-slate-800/30 rounded-lg border border-slate-700/30">
+                    <div className="text-xs font-medium text-slate-400 mb-1">✏️ Type</div>
+                    <p className="text-xs text-slate-500">Click edit to type or paste</p>
+                  </div>
+                  <div className="p-3 bg-slate-800/30 rounded-lg border border-slate-700/30">
+                    <div className="text-xs font-medium text-slate-400 mb-1">Select + speak</div>
+                    <p className="text-xs text-slate-500">Highlight, then "make shorter"</p>
+                  </div>
+                  <div className="p-3 bg-slate-800/30 rounded-lg border border-slate-700/30">
+                    <div className="text-xs font-medium text-slate-400 mb-1">Organize</div>
+                    <p className="text-xs text-slate-500">"Move that section up"</p>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       {/* Footer with word count and selection info */}
-      {content && (
+      {(content || isEditing) && (
         <div className="px-4 py-2 border-t border-slate-700/50 text-xs text-slate-500 flex justify-between">
           <span>
-            {content.split(/\s+/).filter(Boolean).length} words
-            {' • '}
-            {history.length} revisions
+            {(isEditing ? editValue : content).split(/\s+/).filter(Boolean).length} words
+            {!isEditing && (
+              <>
+                {' • '}
+                {history.length} revisions
+              </>
+            )}
           </span>
-          {selection && (
+          {!isEditing && selection && (
             <span className="text-blue-400">
               {selection.text.split(/\s+/).filter(Boolean).length} words selected
+            </span>
+          )}
+          {isEditing && (
+            <span className="text-amber-400">
+              Editing • ⌘↵ to save
             </span>
           )}
         </div>

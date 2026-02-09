@@ -70,44 +70,45 @@ function App() {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
-      <header className="flex items-center justify-between px-6 py-4 border-b border-slate-700/50">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <header className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-700/50">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+            <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
             </svg>
           </div>
-          <h1 className="text-xl font-semibold text-white">BrainDump</h1>
+          <h1 className="text-lg sm:text-xl font-semibold text-white">BrainDump</h1>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           {/* Export button */}
           {content && (
             <button
               onClick={handleExport}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-300 hover:text-white bg-slate-800/50 hover:bg-slate-700 rounded-lg transition-all"
+              className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 text-xs sm:text-sm text-slate-300 hover:text-white bg-slate-800/50 hover:bg-slate-700 rounded-lg transition-all"
               title="Export as Markdown (Cmd+S)"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              Export
+              <span className="hidden sm:inline">Export</span>
             </button>
           )}
 
           <button
             onClick={handleLogout}
-            className="text-sm text-slate-400 hover:text-slate-200 transition-colors"
+            className="text-xs sm:text-sm text-slate-400 hover:text-slate-200 transition-colors"
           >
-            Change API Key
+            <span className="hidden sm:inline">Change API Key</span>
+            <span className="sm:hidden">API</span>
           </button>
         </div>
       </header>
 
-      {/* Main content - split view */}
-      <main className="flex-1 flex gap-4 p-4 overflow-hidden">
-        {/* Voice panel - left side */}
-        <div className="w-80 flex-shrink-0">
+      {/* Main content - responsive layout */}
+      <main className="flex-1 flex flex-col lg:flex-row gap-4 p-4 overflow-hidden">
+        {/* Voice panel - top on mobile, left on desktop */}
+        <div className="lg:w-80 flex-shrink-0 h-64 lg:h-auto">
           {apiKey === 'DEMO_MODE' ? (
             <DemoVoicePanel />
           ) : (
@@ -115,14 +116,14 @@ function App() {
           )}
         </div>
 
-        {/* Document panel - right side (expands) */}
-        <div className="flex-1 min-w-0">
+        {/* Document panel - bottom on mobile, right on desktop */}
+        <div className="flex-1 min-w-0 min-h-0">
           <DocumentPanel />
         </div>
       </main>
 
-      {/* Keyboard shortcuts hint */}
-      <footer className="px-6 py-2 border-t border-slate-700/50 text-xs text-slate-500 flex justify-between">
+      {/* Keyboard shortcuts hint - hidden on mobile */}
+      <footer className="hidden sm:flex px-6 py-2 border-t border-slate-700/50 text-xs text-slate-500 justify-between">
         <div className="flex gap-4">
           <span>⌘Z Undo</span>
           <span>⌘⇧Z Redo</span>
