@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { VoicePanel } from './components/VoicePanel';
+import { DemoVoicePanel } from './components/DemoVoicePanel';
 import { DocumentPanel } from './components/DocumentPanel';
 import { ApiKeyInput } from './components/ApiKeyInput';
 import { useDocumentStore } from './stores/document';
@@ -107,7 +108,11 @@ function App() {
       <main className="flex-1 flex gap-4 p-4 overflow-hidden">
         {/* Voice panel - left side */}
         <div className="w-80 flex-shrink-0">
-          <VoicePanel apiKey={apiKey} />
+          {apiKey === 'DEMO_MODE' ? (
+            <DemoVoicePanel />
+          ) : (
+            <VoicePanel apiKey={apiKey} />
+          )}
         </div>
 
         {/* Document panel - right side (expands) */}
@@ -117,10 +122,17 @@ function App() {
       </main>
 
       {/* Keyboard shortcuts hint */}
-      <footer className="px-6 py-2 border-t border-slate-700/50 text-xs text-slate-500 flex gap-4">
-        <span>⌘Z Undo</span>
-        <span>⌘⇧Z Redo</span>
-        <span>Select text for context</span>
+      <footer className="px-6 py-2 border-t border-slate-700/50 text-xs text-slate-500 flex justify-between">
+        <div className="flex gap-4">
+          <span>⌘Z Undo</span>
+          <span>⌘⇧Z Redo</span>
+          <span>Select text for context</span>
+        </div>
+        {apiKey === 'DEMO_MODE' && (
+          <span className="text-purple-400 flex items-center gap-1">
+            🎬 Demo Mode
+          </span>
+        )}
       </footer>
     </div>
   );

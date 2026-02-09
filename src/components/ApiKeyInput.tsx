@@ -81,6 +81,20 @@ export function ApiKeyInput({ onSubmit }: ApiKeyInputProps) {
               Google AI Studio
             </a>
           </p>
+
+          <div className="mt-4 pt-4 border-t border-slate-700/50">
+            <button
+              type="button"
+              onClick={() => onSubmit('DEMO_MODE')}
+              className="w-full py-2.5 px-4 text-slate-300 font-medium rounded-xl border border-slate-600 hover:bg-slate-800/50 hover:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-slate-900 transition-all flex items-center justify-center gap-2"
+            >
+              <span className="text-lg">🎬</span>
+              Try Demo Mode
+            </button>
+            <p className="mt-2 text-xs text-slate-500 text-center">
+              Test the interface with simulated AI responses
+            </p>
+          </div>
         </form>
 
         {/* Features */}
