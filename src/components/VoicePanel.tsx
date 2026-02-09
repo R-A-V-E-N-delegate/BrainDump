@@ -4,6 +4,7 @@ import { useAudioCapture } from '../hooks/useAudioCapture';
 import { useAudioPlayback } from '../hooks/useAudioPlayback';
 import { useVoiceStore } from '../stores/voice';
 import { useDocumentStore } from '../stores/document';
+import { AudioVisualizer } from './AudioVisualizer';
 
 interface VoicePanelProps {
   apiKey: string;
@@ -147,9 +148,14 @@ export function VoicePanel({ apiKey }: VoicePanelProps) {
           </svg>
         </button>
 
+        {/* Audio visualizer (when connected) */}
+        {status === 'connected' && (
+          <AudioVisualizer isActive={isRecording && !isMuted} />
+        )}
+
         {/* Selection context indicator */}
         {status === 'connected' && selection && (
-          <div className="px-3 py-1.5 bg-blue-500/20 border border-blue-500/30 rounded-lg">
+          <div className="px-3 py-1.5 bg-blue-500/20 border border-blue-500/30 rounded-lg animate-pulse">
             <span className="text-xs text-blue-300">
               Context: "{selection.text.substring(0, 30)}{selection.text.length > 30 ? '...' : ''}"
             </span>

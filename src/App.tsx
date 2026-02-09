@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { VoicePanel } from './components/VoicePanel';
 import { DocumentPanel } from './components/DocumentPanel';
 import { ApiKeyInput } from './components/ApiKeyInput';
+import { useDocumentStore } from './stores/document';
 
 function App() {
   const [apiKey, setApiKey] = useState<string | null>(null);
+  const { content, undo, redo } = useDocumentStore();
 
   // Check for saved API key on mount
   useEffect(() => {
@@ -14,11 +16,50 @@ function App() {
     }
   }, []);
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd/Ctrl + Z = Undo
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      }
+      // Cmd/Ctrl + Shift + Z = Redo
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && e.shiftKey) {
+        e.preventDefault();
+        redo();
+      }
+      // Cmd/Ctrl + Y = Redo (alternative)
+      if ((e.metaKey || e.ctrlKey) && e.key === 'y') {
+        e.preventDefault();
+        redo();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [undo, redo]);
+
   // Handle logout/clear API key
   const handleLogout = () => {
     localStorage.removeItem('braindump_api_key');
     setApiKey(null);
   };
+
+  // Export document as markdown file
+  const handleExport = useCallback(() => {
+    if (!content) return;
+
+    const blob = new Blob([content], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `braindump-${new Date().toISOString().split('T')[0]}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [content]);
 
   // Show API key input if not set
   if (!apiKey) {
@@ -38,12 +79,28 @@ function App() {
           <h1 className="text-xl font-semibold text-white">BrainDump</h1>
         </div>
 
-        <button
-          onClick={handleLogout}
-          className="text-sm text-slate-400 hover:text-slate-200 transition-colors"
-        >
-          Change API Key
-        </button>
+        <div className="flex items-center gap-4">
+          {/* Export button */}
+          {content && (
+            <button
+              onClick={handleExport}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-300 hover:text-white bg-slate-800/50 hover:bg-slate-700 rounded-lg transition-all"
+              title="Export as Markdown (Cmd+S)"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Export
+            </button>
+          )}
+
+          <button
+            onClick={handleLogout}
+            className="text-sm text-slate-400 hover:text-slate-200 transition-colors"
+          >
+            Change API Key
+          </button>
+        </div>
       </header>
 
       {/* Main content - split view */}
@@ -58,6 +115,13 @@ function App() {
           <DocumentPanel />
         </div>
       </main>
+
+      {/* Keyboard shortcuts hint */}
+      <footer className="px-6 py-2 border-t border-slate-700/50 text-xs text-slate-500 flex gap-4">
+        <span>⌘Z Undo</span>
+        <span>⌘⇧Z Redo</span>
+        <span>Select text for context</span>
+      </footer>
     </div>
   );
 }
